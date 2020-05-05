@@ -1,0 +1,175 @@
+---
+title: "US 2020 Democratic Candidates"
+subtitle: "An Exploration in Campaigns and Net Worth"
+author: "Rohan Lewis"
+date: "February 22nd, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_chunk$set(echo = FALSE)
+library(readxl)
+library(lubridate)
+library(ggplot2)
+library(ggrepel)
+library(scales)
+library(Stack)
+library(knitr)
+setwd("D:/Data Science/Completed/Democratic Candidates 2020 ")
+myData <- as.data.frame(read_excel("DC2020.xlsx", sheet = "Data"))
+myData$Enter <- as.Date(ymd(myData$Enter))
+myData$Exit <- as.Date(ymd(myData$Exit))
+myData = myData[rev(order(myData$Enter)),]
+myData$Name = factor(myData$Name, levels = unique(myData$Name))
+rownames(myData) <- NULL
+```
+
+## Summary
+
+A friend of mine asked me on a Facebook post, "Who is Mike <Bloomberg> ?".  Immediately, I thought he's rich and he started late.  I decided to convey that.
+
+I originally saw something similar [here](https://www.reddit.com/r/dataisbeautiful/comments/f4jwad/net_worth_of_us_2020_democratic_presidential/). 
+
+I did not like it, so I gathered some data.  I found campaign information from [2020 United States presidential election](https://en.wikipedia.org/wiki/2020_United_States_presidential_election#Democratic_Party_nomination) page on Wikipedia.  I found a concise source of net worth for most candidates at [Forbes](https://www.forbes.com/sites/danalexander/2019/08/14/heres-the-net-worth-of-every-2020-presidential-candidate/).
+
+I used R 3.5.3 and ggplot2.
+
+## Campaigns
+
+```{r, fig.width = 10, fig.height = 6.5}
+g <- ggplot(myData, aes(y = Name))
+g <- g + geom_point(aes(x = Enter, color = Campaign, size = 1.25))
+g <- g + geom_point(aes(x = Exit, color = Campaign, size = 1.25), data = myData[myData$Campaign == "Suspended",])
+g <- g + geom_segment(aes(x = Enter, y = Name, xend = Exit, yend = Name, color = Campaign, size = 1), data = myData[myData$Campaign == "Suspended",])
+g <- g + geom_segment(aes(x = Enter, y = Name, xend = Sys.Date(), yend = Name, color = Campaign, size = 1.02), data = myData[myData$Campaign == "Remaining",])
+g <- g + scale_color_manual(values = c("skyblue3", "coral"))
+g <- g + scale_x_date(date_breaks = "3 months", date_labels = "%B '%y", expand = c(0, 0))
+g <- g + xlab("Date of Campaign Announcement and Suspension")
+g <- g + ylab("Candidate")
+g <- g + ggtitle("US 2020 Democratic Candidates")
+fontcolor <- ifelse(is.na(myData$Exit), "skyblue3", "coral")
+fontface <- ifelse(is.na(myData$Exit), "bold", "plain")
+g <- g + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12, color = fontcolor, face = fontface),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+g
+```
+
+## Note
+
+From here, I modified the dataset.
+
+1) I eliminated Gravel, Hickenlooper, Messam, Ojeda, Patrick, and Salwell. I did not have Net Worth Data for them.
+
+2) I eliminated all Suspensions, and only looked at Announcements.
+
+3) I modified Delaney's and Yang's Announcement dates both to 2019-01-01...to make the graphs more visually appealing and less cramped on one end.
+
+```{r,}
+newData <- myData[!is.na(myData$Worth),]
+newData$Name <- as.factor(as.character(newData$Name))
+newData$Enter[newData$Name == "Yang, Andrew"] <- as.Date("2019-01-01")
+newData$Enter[newData$Name == "Delaney, John"] <- as.Date("2019-01-01")
+rownames(newData) <- NULL
+```
+
+
+## Net Worth
+
+```{r, fig.width = 10, fig.height = 6.5}
+options(scipen = 999)
+temp <- newData[newData$Worth < 3000000,]
+g <- ggplot(temp, aes(x = Enter, y = Worth))
+g <- g + scale_color_manual(values = c("skyblue3", "coral"))
+g <- g + geom_point(aes(size = Worth, color = Campaign))
+g <- g + geom_text_repel(aes(label = Name), color = "black", size = 5)
+g <- g + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g <- g + scale_x_date("Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g <- g + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 3000000))
+g <- g + ggtitle("US 2020 Democratic Candidates")
+g <- g + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+g
+temp <- newData[newData$Worth < 20000000,]
+g <- ggplot(temp, aes(x = Enter, y = Worth))
+g <- g + scale_color_manual(values = c("skyblue3", "coral"))
+g <- g + geom_point(aes(size = Worth, color = Campaign))
+g <- g + geom_text_repel(data = subset(temp, Worth > 2000000), aes(label = Name), color = "black", size = 5)
+g <- g + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g <- g + scale_x_date("Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g <- g + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 20000000))
+g <- g + ggtitle("US 2020 Democratic Candidates")
+g <- g + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+g
+temp <- newData[newData$Worth < 250000000,]
+g <- ggplot(temp, aes(x = Enter, y = Worth))
+g <- g + scale_color_manual(values = c("skyblue3", "coral"))
+g <- g + geom_point(aes(size = Worth, color = Campaign))
+g <- g + geom_text_repel(data = subset(temp, Worth > 14000000), aes(label = Name), color = "black", size = 5)
+g <- g + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g <- g + scale_x_date("Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g <- g + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 250000000))
+g <- g + ggtitle("US 2020 Democratic Candidates")
+g <- g + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+g
+temp <- newData[newData$Worth < 2000000000,]
+g <- ggplot(temp, aes(x = Enter, y = Worth))
+g <- g + scale_color_manual(values = c("skyblue3", "coral"))
+g <- g + geom_point(aes(size = Worth, color = Campaign))
+g <- g + geom_text_repel(data = subset(temp, Worth > 100000000), aes(label = Name), color = "black", size = 5)
+g <- g + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g <- g + scale_x_date("Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g <- g + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 2000000000))
+g <- g + ggtitle("US 2020 Democratic Candidates")
+g <- g + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+g
+temp <- newData[newData$Worth < 70000000000,]
+g <- ggplot(temp, aes(x = Enter, y = Worth))
+g <- g + scale_color_manual(values = c("skyblue3", "coral"))
+g <- g + geom_point(aes(size = Worth, color = Campaign))
+g <- g + geom_text_repel(data = subset(temp, Worth > 1000000000), aes(label = Name), color = "black", size = 5)
+g <- g + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g <- g + scale_x_date("Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g <- g + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 70000000000))
+g <- g + ggtitle("US 2020 Democratic Candidates")
+g <- g + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+g
+```
+
+***
+
+# Appendix 
+The complete code and RMarkdown can be found at my  [GitHub](https://github.com/HumanRickshaw/US-2020-Democratic-Candidates.git).
+
+
+## Summary
+```{r}
+kable(myData)
+```
+
+## Note
+```{r}
+kable(newData)
+```
