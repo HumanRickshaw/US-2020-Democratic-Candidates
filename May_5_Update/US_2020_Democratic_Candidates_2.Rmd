@@ -1,0 +1,307 @@
+---
+title: "US 2020 Democratic Candidates"
+subtitle: "An Exploration in Campaigns and Net Worth"
+author: "Rohan Lewis"
+date: "February 22nd, 2020 (Updated May 4th, 2020)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+library(readxl)
+library(lubridate)
+library(ggplot2)
+library(ggrepel)
+library(grid)
+library(gridExtra)
+library(scales)
+library(Stack)
+library(knitr)
+library(lemon)
+library(cowplot)
+
+setwd("D:/Data Science/Completed/Democratic Candidates 2020 ")
+my_Data <- as.data.frame(read_excel("DC2020.xlsx", sheet = "Data"))
+my_Data$Enter <- as.Date(ymd(my_Data$Enter))
+my_Data$Exit <- as.Date(ymd(my_Data$Exit))
+my_Data = my_Data[rev(order(my_Data$Enter)),]
+my_Data$Name = factor(my_Data$Name, levels = unique(my_Data$Name))
+rownames(my_Data) <- NULL
+```
+
+## Summary
+
+A friend of mine asked me on a Facebook post, "Who is Mike <Bloomberg> ?".  Immediately, I thought he's rich and he started late.  I decided to convey that.
+
+I originally saw something similar [here](https://www.reddit.com/r/dataisbeautiful/comments/f4jwad/net_worth_of_us_2020_democratic_presidential/). 
+
+I did not like it, so I gathered some data.  I found campaign information from [2020 United States presidential election](https://en.wikipedia.org/wiki/2020_United_States_presidential_election#Democratic_Party_nomination) page on Wikipedia.  I found a concise source of net worth for most candidates at [Forbes](https://www.forbes.com/sites/danalexander/2019/08/14/heres-the-net-worth-of-every-2020-presidential-candidate/).
+
+I used R 3.5.3 and ggplot2.
+
+## Campaigns
+
+```{r, fig.width = 10, fig.height = 7}
+temp_Data <- my_Data[my_Data$Enter < "2018-01-01",]
+
+g1 <- ggplot(temp_Data, aes(y = Name))
+g1 <- g1 + geom_point(aes(x = Enter, color = Campaign), size = 5)
+g1 <- g1 + geom_segment(aes(x = Enter, y = Name, xend = as.Date(ymd("2017-12-01")), yend = Name, color = Campaign), size = 1.25)
+g1 <- g1 + scale_color_manual(values = c("#009E73", "#E69F00"))
+g1 <- g1 + scale_x_date(limits = c(as.Date(ymd("2017-07-16")), as.Date(ymd("2017-12-01"))), date_breaks = "2 months", date_labels = "%B '%y", expand = c(0, 0))
+fontcolor <- ifelse(temp_Data$Exit > "2020-02-03", "#009E73", "#E69F00")
+fontface <- ifelse(is.na(my_Data$Exit), "bold", "plain")
+g1 <- g1 + ggtitle("")
+g1 <- g1 + theme(plot.title = element_text(size = 18, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 11, angle = 45),
+                 axis.text.y = element_text(size = 11, color = fontcolor, face = fontface),
+                 axis.title = element_blank(),
+                 legend.position = "none")
+
+
+g2 <- ggplot(my_Data, aes(y = Name))
+g2 <- g2 + geom_point(aes(x = Exit, color = Campaign), size = 5)
+g2 <- g2 + geom_point(aes(x = Enter, color = Campaign), size = 5, data = my_Data[my_Data$Enter > "2018-01-01",])
+g2 <- g2 + geom_segment(aes(x = as.Date(ymd("2018-11-01")), y = Name, xend = Exit, yend = Name, color = Campaign), size = 1.25, data = my_Data[my_Data$Enter < "2018-01-01",])
+g2 <- g2 + geom_segment(aes(x = Enter, y = Name, xend = Exit, yend = Name, color = Campaign), size = 1.25, data = my_Data[my_Data$Campaign != "Remaining" & my_Data$Enter > "2018-01-01",])
+g2 <- g2 + geom_segment(aes(x = Enter, y = Name, xend = Sys.Date(), yend = Name, color = Campaign), size = 1.5, data = my_Data[my_Data$Campaign == "Remaining",])
+g2 <- g2 + scale_color_manual(name = "Campaign Status",
+                              values = c("#56B4E9", "#009E73", "#E69F00"),
+                              breaks = c("Remaining", "Caucus", "Suspended"),
+                              labels = c("Democratic Nominee",
+                                         "Suspended after Iowa Caucus",
+                                         "Suspended before Iowa Caucus"))
+g2 <- g2 + scale_x_date(limits = c(as.Date(ymd("2018-11-01")), Sys.Date()),date_breaks = "3 months", date_labels = "%B '%y", expand = c(0, 0))
+g2 <- g2 + scale_y_discrete(position = "right")
+g2 <- g2 + xlab("Date of Campaign Announcement and Suspension")
+g2 <- g2 + ylab("Candidate")
+g2 <- g2 + ggtitle("US 2020 Democratic Candidates")
+fontcolor <- ifelse(my_Data$Campaign == "Remaining", "#56B4E9",
+                    ifelse(my_Data$Campaign == "Caucus", "#009E73", "#E69F00"))
+g2 <- g2 + theme(plot.title = element_text(hjust = -0.2, size = 18, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 11, angle = 45),
+                 axis.text.y = element_text(size = 11, color = fontcolor, face = fontface),
+                 axis.title.x = element_text(hjust = -0.2, size = 14, face = "bold"),
+                 axis.title.y = element_text(size = 14, face = "bold"))
+legend <- g_legend(g2 + theme(legend.title = element_text(size = 14, face = "bold"),
+                              legend.text = element_text(size = 11),
+                              legend.position = "right"))
+g2 <- g2 + theme(legend.position = "none")
+
+grid.arrange(g1, g2, legend, layout_matrix = matrix(rbind(c(1, 2, 2, 2),
+                                                          c(1, 2, 2, 2),
+                                                          c(NA, 2, 2, 2),
+                                                          c(NA, 2, 2, 2),
+                                                          c(3, 2, 2, 2),
+                                                          c(NA, 2, 2, 2),
+                                                          c(NA, 2, 2, 2),
+                                                          c(NA, 2, 2, 2)),
+                                                    ncol = 4))
+```
+
+## Note
+
+From here, I modified the dataset.
+
+1) I eliminated Gravel, Hickenlooper, Messam, Ojeda, Patrick, and Salwell. I did not have Net Worth Data for them.
+
+2) I eliminated all Suspensions, and only looked at Announcements.
+
+```{r,}
+new_Data <- my_Data[!is.na(my_Data$Worth),]
+new_Data$Name <- as.factor(as.character(new_Data$Name))
+rownames(new_Data) <- NULL
+```
+
+
+## Net Worth
+
+```{r, fig.width = 10, fig.height = 6.5}
+options(scipen = 999)
+temp <- new_Data[new_Data$Worth < 3000000,]
+g3 <- ggplot(temp, aes(x = Enter, y = Worth))
+g3 <- g3 + scale_color_manual(values = c("#009E73", "#E69F00", "#56B4E9"))
+g3 <- g3 + geom_point(aes(size = Worth, color = Campaign))
+g3 <- g3 + geom_text_repel(aes(label = Name), color = "black", size = 5)
+g3 <- g3 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g3 <- g3 + scale_x_date("", limits = c(as.Date(ymd("2017-10-15")), as.Date(ymd("2017-11-15"))), date_breaks = "1 month", date_labels = "%B '%y")
+g3 <- g3 + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 3000000))
+g3 <- g3 + ggtitle("")
+g3 <- g3 + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(size = 14, face = "bold"),
+               legend.position = "none")
+
+g4 <- ggplot(temp, aes(x = Enter, y = Worth))
+g4 <- g4 + scale_color_manual(values = c("#009E73", "#E69F00", "#56B4E9"))
+g4 <- g4 + geom_point(aes(size = Worth, color = Campaign))
+g4 <- g4 + geom_text_repel(aes(label = Name), color = "black", size = 5)
+g4 <- g4 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g4 <- g4 + scale_x_date(limits = c(as.Date(ymd("2019-01-01")), as.Date(ymd("2019-06-01"))), "Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g4 <- g4 + scale_y_continuous("", labels = NULL, limits = c(0, 3000000))
+g4 <- g4 + ggtitle("US 2020 Democratic Candidates")
+g4 <- g4 + theme(plot.title = element_text(hjust = 0, face = "bold"),
+               axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+               axis.text.y = element_text(size = 12),
+               axis.title = element_text(hjust = 0, size = 14, face = "bold"),
+               legend.position = "none")
+
+grid.arrange(g3, g4, layout_matrix = matrix(c(1, 1, 2, 2, 2, 2, 2), ncol = 7))
+
+
+
+
+
+temp <- new_Data[new_Data$Worth < 20000000,]
+g5 <- ggplot(temp, aes(x = Enter, y = Worth))
+g5 <- g5 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g5 <- g5 + geom_point(aes(size = Worth, color = Campaign))
+g5 <- g5 + geom_text_repel(data = subset(temp, Worth > 2000000), aes(label = Name), color = "black", size = 5)
+g5 <- g5 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g5 <- g5 + scale_x_date("", limits = c(as.Date(ymd("2017-10-15")), as.Date(ymd("2017-11-15"))), date_breaks = "1 month", date_labels = "%B '%y")
+g5 <- g5 + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 20000000))
+g5 <- g5 + ggtitle("")
+g5 <- g5 + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(size = 14, face = "bold"),
+                 legend.position = "none")
+
+g6 <- ggplot(temp, aes(x = Enter, y = Worth))
+g6 <- g6 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g6 <- g6 + geom_point(aes(size = Worth, color = Campaign))
+g6 <- g6 + geom_text_repel(data = subset(temp, Worth > 2000000), aes(label = Name), color = "black", size = 5)
+g6 <- g6 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g6 <- g6 + scale_x_date(limits = c(as.Date(ymd("2019-01-01")), as.Date(ymd("2019-07-01"))), "Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g6 <- g6 + scale_y_continuous("", labels = NULL, limits = c(0, 20000000))
+g6 <- g6 + ggtitle("US 2020 Democratic Candidates")
+g6 <- g6 + theme(plot.title = element_text(hjust = 0, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(hjust = 0, size = 14, face = "bold"),
+                 legend.position = "none")
+
+grid.arrange(g5, g6, layout_matrix = matrix(c(1, 1, 2, 2, 2, 2, 2), ncol = 7))
+
+
+
+
+
+temp <- new_Data[new_Data$Worth < 250000000,]
+g7 <- ggplot(temp, aes(x = Enter, y = Worth))
+g7 <- g7 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g7 <- g7 + geom_point(aes(size = Worth, color = Campaign))
+g7 <- g7 + geom_text_repel(data = subset(temp, Worth > 14000000), aes(label = Name), color = "black", size = 5)
+g7 <- g7 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g7 <- g7 + scale_x_date("", limits = c(as.Date(ymd("2017-06-01")), as.Date(ymd("2017-12-01"))), date_breaks = "3 months", date_labels = "%B '%y")
+g7 <- g7 + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 250000000))
+g7 <- g7 + ggtitle("")
+g7 <- g7 + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(size = 14, face = "bold"),
+                 legend.position = "none")
+
+g8 <- ggplot(temp, aes(x = Enter, y = Worth))
+g8 <- g8 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g8 <- g8 + geom_point(aes(size = Worth, color = Campaign))
+g8 <- g8 + geom_text_repel(data = subset(temp, Worth > 14000000), aes(label = Name), color = "black", size = 5)
+g8 <- g8 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g8 <- g8 + scale_x_date(limits = c(as.Date(ymd("2019-01-01")), as.Date(ymd("2019-07-01"))), "Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g8 <- g8 + scale_y_continuous("", labels = NULL, limits = c(0, 250000000))
+g8 <- g8 + ggtitle("US 2020 Democratic Candidates")
+g8 <- g8 + theme(plot.title = element_text(hjust = 0, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(hjust = 0, size = 14, face = "bold"),
+                 legend.position = "none")
+
+grid.arrange(g7, g8, layout_matrix = matrix(c(1, 1, 2, 2, 2, 2, 2), ncol = 7))
+
+
+
+
+
+temp <- new_Data[new_Data$Worth < 2000000000,]
+g9 <- ggplot(temp, aes(x = Enter, y = Worth))
+g9 <- g9 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g9 <- g9 + geom_point(aes(size = Worth, color = Campaign))
+g9 <- g9 + geom_text_repel(data = subset(temp, Worth > 100000000), aes(label = Name), color = "black", size = 5)
+g9 <- g9 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g9 <- g9 + scale_x_date("", limits = c(as.Date(ymd("2017-06-01")), as.Date(ymd("2017-12-01"))), date_breaks = "3 months", date_labels = "%B '%y")
+g9 <- g9 + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 2000000000))
+g9 <- g9 + ggtitle("")
+g9 <- g9 + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(size = 14, face = "bold"),
+                 legend.position = "none")
+
+g10 <- ggplot(temp, aes(x = Enter, y = Worth))
+g10 <- g10 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g10 <- g10 + geom_point(aes(size = Worth, color = Campaign))
+g10 <- g10 + geom_text_repel(data = subset(temp, Worth > 100000000), aes(label = Name), color = "black", size = 5)
+g10 <- g10 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g10 <- g10 + scale_x_date(limits = c(as.Date(ymd("2019-01-01")), as.Date(ymd("2019-08-01"))), "Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g10 <- g10 + scale_y_continuous("", labels = NULL, limits = c(0, 2000000000))
+g10 <- g10 + ggtitle("US 2020 Democratic Candidates")
+g10 <- g10 + theme(plot.title = element_text(hjust = 0, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(hjust = 0, size = 14, face = "bold"),
+                 legend.position = "none")
+
+grid.arrange(g9, g10, layout_matrix = matrix(c(1, 1, 2, 2, 2, 2, 2), ncol = 7))
+
+
+
+temp <- new_Data[new_Data$Worth < 70000000000,]
+g11 <- ggplot(temp, aes(x = Enter, y = Worth))
+g11 <- g11 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g11 <- g11 + geom_point(aes(size = Worth, color = Campaign))
+g11 <- g11 + geom_text_repel(data = subset(temp, Worth > 1000000000), aes(label = Name), color = "black", size = 5)
+g11 <- g11 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g11 <- g11 + scale_x_date("", limits = c(as.Date(ymd("2017-06-01")), as.Date(ymd("2017-12-01"))), date_breaks = "3 months", date_labels = "%B '%y")
+g11 <- g11 + scale_y_continuous("Net Worth as of August '19", label = dollar, limits = c(0, 70000000000))
+g11 <- g11 + ggtitle("")
+g11 <- g11 + theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(size = 14, face = "bold"),
+                 legend.position = "none")
+
+g12 <- ggplot(temp, aes(x = Enter, y = Worth))
+g12 <- g12 + scale_color_manual(values = c("#009E73", "#56B4E9", "#E69F00"))
+g12 <- g12 + geom_point(aes(size = Worth, color = Campaign))
+g12 <- g12 + geom_text_repel(data = subset(temp, Worth > 1000000000), aes(label = Name), color = "black", size = 5)
+g12 <- g12 + scale_size_continuous(range = c(50 / sqrt(max(temp$Worth) / min(temp$Worth)), 50))
+g12 <- g12 + scale_x_date(limits = c(as.Date(ymd("2019-01-01")), as.Date(ymd("2019-12-15"))), "Date of Campaign Announcement", date_breaks = "1 month", date_labels = "%B '%y")
+g12 <- g12 + scale_y_continuous("", labels = NULL, limits = c(0, 70000000000))
+g12 <- g12 + ggtitle("US 2020 Democratic Candidates")
+g12 <- g12 + theme(plot.title = element_text(hjust = 0, face = "bold"),
+                 axis.text.x = element_text(hjust = 1, size = 12, angle = 45),
+                 axis.text.y = element_text(size = 12),
+                 axis.title = element_text(hjust = 0, size = 14, face = "bold"),
+                 legend.position = "none")
+
+grid.arrange(g11, g12, layout_matrix = matrix(c(1, 1, 2, 2, 2, 2, 2), ncol = 7))
+```
+
+***
+
+# Appendix 
+The complete code and RMarkdown can be found at my  [GitHub](https://github.com/HumanRickshaw/US-2020-Democratic-Candidates.git).
+
+
+## Summary
+```{r}
+kable(my_Data)
+```
+
+## Note
+```{r}
+kable(new_Data)
+```
