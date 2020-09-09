@@ -2,7 +2,7 @@
 title: "US 2020 Democratic Candidates"
 subtitle: "An Exploration in Campaigns and Net Worth"
 author: "Rohan Lewis"
-date: "February 22nd, 2020 (Updated May 5th, 2020)"
+date: "May 5th, 2020"
 output: html_document
 ---
 
@@ -293,7 +293,7 @@ grid.arrange(g11, g12, layout_matrix = matrix(c(1, 1, 2, 2, 2, 2, 2), ncol = 7))
 ***
 
 # Appendix 
-The complete code and RMarkdown can be found at my  [GitHub](https://github.com/HumanRickshaw/US_2020_Democratic_Candidates_Update.git).
+The complete code and RMarkdown can be found at my  [GitHub](https://github.com/HumanRickshaw/US_2020_Democratic_Candidates/blob/master/US_2020_Democratic_Candidates_Update.Rmd).
 
 
 ## Summary
